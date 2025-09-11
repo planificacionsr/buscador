@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Datos desde Google Sheets</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #333;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        
+        .description {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .search-container {
+            display: flex;
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 50px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        #search-input {
+            flex: 1;
+            padding: 18px 25px;
+            border: none;
+            font-size: 18px;
+            outline: none;
+        }
+        
+        #search-button {
+            padding: 18px 30px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        #search-button:hover {
+            background-color: #2980b9;
+        }
+        
+        .instructions {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .instructions h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        
+        .results-container {
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            background-color: #f8f9fa;
+            border-left: 5px solid #3498db;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .result-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-size: 1.2rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #3498db;
+            font-size: 1.2rem;
+        }
+        
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+        }
+        
+        .result-highlight {
+            background-color: #ffeaa7;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .stats {
+            text-align: center;
+            margin: 20px 0;
+            color: #7f8c8d;
+        }
+        
+        @media (max-width: 768px) {
+            .search-container {
+                flex-direction: column;
+                border-radius: 10px;
+            }
+            
+            #search-input {
+                border-radius: 10px 10px 0 0;
+            }
+            
+            #search-button {
+                border-radius: 0 0 10px 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-search"></i> Buscador de Datos</h1>
+            <p class="description">Busca información en nuestra base de datos actualizada constantemente mediante Google Sheets</p>
+        </header>
+        
+        <div class="instructions">
+            <h2><i class="fas fa-info-circle"></i> Instrucciones de uso</h2>
+            <ol>
+                <li>Introduce tu término de búsqueda en el campo de texto</li>
+                <li>Haz clic en "Buscar" o presiona Enter</li>
+                <li>Los resultados se mostrarán a continuación, con los términos buscados resaltados</li>
+            </ol>
+        </div>
+        
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Introduce tu búsqueda...">
+            <button id="search-button">Buscar</button>
+        </div>
+        
+        <div class="stats">
+            <p id="stats-text">Cargando datos...</p>
+        </div>
+        
+        <div id="results-container" class="results-container">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p>Cargando datos desde Google Sheets...</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2023 Buscador de Datos - Los datos se cargan desde Google Sheets en tiempo real</p>
+        </footer>
+    </div>
+
+    <script>
+        // URL de tu Google Sheets publicada como CSV
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShpaQIr1gFVnJcA_ilcdAGVW8QHomQtdERD9_e-GFzLd-F-_zzCzlb2tUZ6ohdEoeqcfPGuVco7L09/pub?gid=501367966&single=true&output=csv';
+        
+        // Variables globales
+        let allData = [];
+        
+        // Elementos del DOM
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const resultsContainer = document.getElementById('results-container');
+        const statsText = document.getElementById('stats-text');
+        
+        // Cargar datos al iniciar la página
+        document.addEventListener('DOMContentLoaded', loadData);
+        
+        // Event listeners
+        searchButton.addEventListener('click', performSearch);
+        searchInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        });
+        
+        // Función para cargar datos desde Google Sheets
+        async function loadData() {
+            showLoading();
+            
+            try {
+                const response = await fetch(SHEET_URL);
+                const csvData = await response.text();
+                
+                // Convertir CSV a array de objetos
+                allData = parseCSV(csvData);
+                
+                if (allData.length > 0) {
+                    showMessage('Introduce un término de búsqueda para comenzar');
+                    statsText.textContent = `Cargados ${allData.length} registros desde Google Sheets`;
+                } else {
+                    showError('No se encontraron datos en la hoja de cálculo');
+                    statsText.textContent = 'No se encontraron datos en la hoja de cálculo';
+                }
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                showError('Error al cargar los datos. Verifica la conexión y la URL de la hoja de cálculo.');
+                statsText.textContent = 'Error al cargar los datos';
+            }
+        }
+        
+        // Función para analizar CSV
+        function parseCSV(csv) {
+            const lines = csv.split('\n');
+            const result = [];
+            
+            if (lines.length < 2) return result;
+            
+            // Obtener encabezados
+            const headers = lines[0].split(',').map(header => header.trim());
+            
+            // Procesar cada línea
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                const obj = {};
+                // Manejar campos con comas usando expresiones regulares
+                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                
+                for (let j = 0; j < headers.length; j++) {
+                    // Limpiar valores entre comillas
+                    let value = currentline[j] ? currentline[j].trim() : '';
+                    if (value.startsWith('"') && value.endsWith('"')) {
+                        value = value.substring(1, value.length - 1);
+                    }
+                    obj[headers[j]] = value;
+                }
+                
+                result.push(obj);
+            }
+            
+            return result;
+        }
+        
+        // Función para realizar la búsqueda
+        function performSearch() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            
+            if (!searchTerm) {
+                showMessage('Por favor, introduce un término de búsqueda');
+                return;
+            }
+            
+            if (allData.length === 0) {
+                showError('No hay datos disponibles para buscar');
+                return;
+            }
+            
+            // Filtrar datos según el término de búsqueda
+            const filteredData = allData.filter(item => {
+                // Buscar en todos los valores del objeto
+                for (let key in item) {
+                    if (item[key].toLowerCase().includes(searchTerm)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            
+            displayResults(filteredData, searchTerm);
+            statsText.textContent = `Encontrados ${filteredData.length} resultados para "${searchTerm}" de un total de ${allData.length} registros`;
+        }
+        
+        // Función para mostrar resultados
+        function displayResults(results, searchTerm) {
+            if (results.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-search fa-2x"></i>
+                        <p>No se encontraron resultados para "${searchTerm}"</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            results.forEach(item => {
+                html += '<div class="result-item">';
+                for (let key in item) {
+                    // Resaltar el término de búsqueda en los resultados
+                    let value = item[key];
+                    if (value.toLowerCase().includes(searchTerm)) {
+                        const regex = new RegExp(`(${searchTerm})`, 'gi');
+                        value = value.replace(regex, '<span class="result-highlight">$1</span>');
+                    }
+                    html += `<p><strong>${key}:</strong> ${value}</p>`;
+                }
+                html += '</div>';
+            });
+            
+            resultsContainer.innerHTML = html;
+        }
+        
+        // Funciones auxiliares para mostrar estados
+        function showLoading() {
+            resultsContainer.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                    <p>Cargando datos desde Google Sheets...</p>
+                </div>
+            `;
+        }
+        
+        function showMessage(message) {
+            resultsContainer.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-search fa-2x"></i>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+        
+        function showError(message) {
+            resultsContainer.innerHTML = `
+                <div class="error">
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
