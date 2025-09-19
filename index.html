@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador de Datos desde Google Sheets</title>
+    <title>Buscador por DNI desde Google Sheets</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -14,7 +14,7 @@
         }
         
         body {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            background: linear-gradient(135deg, #1a2a6c 0%, #b21f1f 50%, #fdbb2d 100%);
             color: #333;
             padding: 20px;
             min-height: 100vh;
@@ -105,18 +105,44 @@
             margin-top: 20px;
         }
         
+        .result-group {
+            margin-bottom: 25px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .group-header {
+            background-color: #3498db;
+            color: white;
+            padding: 15px 20px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .group-count {
+            background-color: white;
+            color: #3498db;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
         .result-item {
             padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 15px;
             background-color: #f8f9fa;
-            border-left: 5px solid #3498db;
+            border-bottom: 1px solid #e0e0e0;
             transition: transform 0.3s, box-shadow 0.3s;
         }
         
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
         .result-item:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            background-color: #e8f4fc;
         }
         
         .no-results {
@@ -182,26 +208,26 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-search"></i> Buscador de Datos</h1>
-            <p class="description">Busca información en nuestra base de datos actualizada constantemente mediante Google Sheets</p>
+            <h1><i class="fas fa-id-card"></i> Buscador por DNI</h1>
+            <p class="description">Busca información en nuestra base de datos por número de DNI</p>
         </header>
         
         <div class="instructions">
             <h2><i class="fas fa-info-circle"></i> Instrucciones de uso</h2>
             <ol>
-                <li>Introduce tu término de búsqueda en el campo de texto</li>
+                <li>Introduce un número de DNI en el campo de texto</li>
                 <li>Haz clic en "Buscar" o presiona Enter</li>
-                <li>Los resultados se mostrarán a continuación, con los términos buscados resaltados</li>
+                <li>Los resultados se agruparán por DNI y se mostrarán todas las coincidencias</li>
             </ol>
         </div>
         
         <div class="search-container">
-            <input type="text" id="search-input" placeholder="Introduce tu búsqueda...">
+            <input type="text" id="search-input" placeholder="Introduce un DNI para buscar...">
             <button id="search-button">Buscar</button>
         </div>
         
         <div class="stats">
-            <p id="stats-text">Cargando datos...</p>
+            <p id="stats-text">Cargando datos desde Google Sheets...</p>
         </div>
         
         <div id="results-container" class="results-container">
@@ -212,13 +238,13 @@
         </div>
         
         <footer>
-            <p>© 2023 Buscador de Datos - Los datos se cargan desde Google Sheets en tiempo real</p>
+            <p>© 2023 Buscador por DNI - Los datos se cargan desde Google Sheets en tiempo real</p>
         </footer>
     </div>
 
     <script>
         // URL de tu Google Sheets publicada como CSV
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShpaQIr1gFVnJcA_ilcdAGVW8QHomQtdERD9_e-GFzLd-F-_zzCzlb2tUZ6ohdEoeqcfPGuVco7L09/pub?gid=501367966&single=true&output=csv';
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRpYhhQWucY7Ec3xvUoHglLX3YO1yhAaNqTWmtSs3HzZHWstLvtWOx_SRujBOrtRDEhvf5PnJRojo9b/pub?output=csv';
         
         // Variables globales
         let allData = [];
@@ -252,7 +278,7 @@
                 allData = parseCSV(csvData);
                 
                 if (allData.length > 0) {
-                    showMessage('Introduce un término de búsqueda para comenzar');
+                    showMessage('Introduce un DNI para comenzar la búsqueda');
                     statsText.textContent = `Cargados ${allData.length} registros desde Google Sheets`;
                 } else {
                     showError('No se encontraron datos en la hoja de cálculo');
@@ -298,12 +324,12 @@
             return result;
         }
         
-        // Función para realizar la búsqueda
+        // Función para realizar la búsqueda por DNI
         function performSearch() {
-            const searchTerm = searchInput.value.trim().toLowerCase();
+            const searchTerm = searchInput.value.trim();
             
             if (!searchTerm) {
-                showMessage('Por favor, introduce un término de búsqueda');
+                showMessage('Por favor, introduce un DNI para buscar');
                 return;
             }
             
@@ -312,28 +338,51 @@
                 return;
             }
             
-            // Filtrar datos según el término de búsqueda
+            // Filtrar datos según el DNI (columna E)
             const filteredData = allData.filter(item => {
-                // Buscar en todos los valores del objeto
-                for (let key in item) {
-                    if (item[key].toLowerCase().includes(searchTerm)) {
-                        return true;
-                    }
-                }
-                return false;
+                // Obtener todas las claves del objeto
+                const keys = Object.keys(item);
+                // Asumimos que la columna E es la quinta columna (índice 4)
+                // Pero también buscamos por nombre de columna por si acaso
+                const dniValue = item[keys[4]] || item['DNI'] || item['dni'] || item['Dni'];
+                return dniValue && dniValue.includes(searchTerm);
             });
             
-            displayResults(filteredData, searchTerm);
-            statsText.textContent = `Encontrados ${filteredData.length} resultados para "${searchTerm}" de un total de ${allData.length} registros`;
+            // Agrupar por DNI
+            const groupedResults = groupByDNI(filteredData);
+            
+            displayGroupedResults(groupedResults, searchTerm);
+            statsText.textContent = `Encontrados ${filteredData.length} resultados para el DNI "${searchTerm}" agrupados en ${Object.keys(groupedResults).length} grupos`;
         }
         
-        // Función para mostrar resultados
-        function displayResults(results, searchTerm) {
-            if (results.length === 0) {
+        // Función para agrupar resultados por DNI
+        function groupByDNI(data) {
+            const grouped = {};
+            
+            data.forEach(item => {
+                // Obtener todas las claves del objeto
+                const keys = Object.keys(item);
+                // Asumimos que la columna E es la quinta columna (índice 4)
+                // Pero también buscamos por nombre de columna por si acaso
+                const dniValue = item[keys[4]] || item['DNI'] || item['dni'] || item['Dni'] || 'Sin DNI';
+                
+                if (!grouped[dniValue]) {
+                    grouped[dniValue] = [];
+                }
+                
+                grouped[dniValue].push(item);
+            });
+            
+            return grouped;
+        }
+        
+        // Función para mostrar resultados agrupados
+        function displayGroupedResults(groupedResults, searchTerm) {
+            if (Object.keys(groupedResults).length === 0) {
                 resultsContainer.innerHTML = `
                     <div class="no-results">
                         <i class="fas fa-search fa-2x"></i>
-                        <p>No se encontraron resultados para "${searchTerm}"</p>
+                        <p>No se encontraron resultados para el DNI "${searchTerm}"</p>
                     </div>
                 `;
                 return;
@@ -341,19 +390,32 @@
             
             let html = '';
             
-            results.forEach(item => {
-                html += '<div class="result-item">';
-                for (let key in item) {
-                    // Resaltar el término de búsqueda en los resultados
-                    let value = item[key];
-                    if (value.toLowerCase().includes(searchTerm)) {
-                        const regex = new RegExp(`(${searchTerm})`, 'gi');
-                        value = value.replace(regex, '<span class="result-highlight">$1</span>');
+            for (const dni in groupedResults) {
+                const group = groupedResults[dni];
+                html += `
+                    <div class="result-group">
+                        <div class="group-header">
+                            <span>DNI: ${dni}</span>
+                            <span class="group-count">${group.length} coincidencia(s)</span>
+                        </div>
+                `;
+                
+                group.forEach(item => {
+                    html += '<div class="result-item">';
+                    for (let key in item) {
+                        let value = item[key];
+                        // Resaltar el término de búsqueda en los resultados
+                        if (key === 'DNI' || key === 'dni' || key === 'Dni' || value === dni) {
+                            const regex = new RegExp(`(${searchTerm})`, 'gi');
+                            value = value.replace(regex, '<span class="result-highlight">$1</span>');
+                        }
+                        html += `<p><strong>${key}:</strong> ${value}</p>`;
                     }
-                    html += `<p><strong>${key}:</strong> ${value}</p>`;
-                }
+                    html += '</div>';
+                });
+                
                 html += '</div>';
-            });
+            }
             
             resultsContainer.innerHTML = html;
         }
