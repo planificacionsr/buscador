@@ -3,451 +3,513 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador por DNI desde Google Sheets</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Buscador de Legajos - Google Sheets</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Roboto', sans-serif;
         }
-        
+
         body {
-            background: linear-gradient(135deg, #1a2a6c 0%, #b21f1f 50%, #fdbb2d 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             color: #333;
+            line-height: 1.6;
             padding: 20px;
             min-height: 100vh;
         }
-        
+
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
             background-color: white;
-            padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
         }
-        
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #4285f4, #34a853, #fbbc05, #ea4335);
+        }
+
         header {
             text-align: center;
             margin-bottom: 30px;
+            padding-top: 10px;
         }
-        
+
         h1 {
             color: #2c3e50;
             margin-bottom: 10px;
-            font-size: 2.5rem;
+            font-size: 2.2rem;
         }
-        
+
         .description {
             color: #7f8c8d;
+            margin-bottom: 20px;
             font-size: 1.1rem;
-            max-width: 800px;
-            margin: 0 auto;
         }
-        
-        .search-container {
+
+        .search-section {
             display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
             margin-bottom: 30px;
-            background: white;
-            border-radius: 50px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        #search-input {
-            flex: 1;
-            padding: 18px 25px;
-            border: none;
-            font-size: 18px;
-            outline: none;
-        }
-        
-        #search-button {
-            padding: 18px 30px;
-            background-color: #3498db;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-        }
-        
-        #search-button:hover {
-            background-color: #2980b9;
-        }
-        
-        .instructions {
-            background-color: #f8f9fa;
+            align-items: center;
+            background: #f8f9fa;
             padding: 20px;
             border-radius: 10px;
-            margin-bottom: 30px;
-            border-left: 5px solid #3498db;
         }
-        
-        .instructions h2 {
-            color: #2c3e50;
-            margin-bottom: 15px;
+
+        #searchInput {
+            flex: 1;
+            min-width: 200px;
+            padding: 14px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
         }
-        
-        .instructions ol {
-            padding-left: 20px;
+
+        #searchInput:focus {
+            border-color: #4285f4;
+            outline: none;
         }
-        
-        .instructions li {
-            margin-bottom: 10px;
-            line-height: 1.6;
+
+        #searchType {
+            padding: 14px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: white;
+            cursor: pointer;
         }
-        
-        .results-container {
+
+        #searchButton {
+            padding: 14px 25px;
+            background: linear-gradient(90deg, #4285f4, #34a853);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #searchButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #4285f4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
             margin-top: 20px;
         }
-        
-        .result-group {
-            margin-bottom: 25px;
-            border: 1px solid #e0e0e0;
+
+        .result-item {
+            background-color: white;
             border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
             overflow: hidden;
+            transition: transform 0.3s;
         }
-        
-        .group-header {
-            background-color: #3498db;
-            color: white;
-            padding: 15px 20px;
-            font-weight: bold;
+
+        .result-item:hover {
+            transform: translateY(-5px);
+        }
+
+        .result-header {
+            padding: 20px;
+            background-color: #f8f9fa;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
         }
-        
-        .group-count {
-            background-color: white;
-            color: #3498db;
+
+        .result-header:hover {
+            background-color: #e9ecef;
+        }
+
+        .person-info {
+            flex: 1;
+        }
+
+        .person-name {
+            font-weight: bold;
+            font-size: 1.3rem;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .person-details {
+            color: #7f8c8d;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .detail-badge {
+            background: #e9ecef;
             padding: 5px 10px;
             border-radius: 20px;
             font-size: 0.9rem;
         }
-        
-        .result-item {
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #e0e0e0;
-            transition: transform 0.3s, box-shadow 0.3s;
+
+        .expand-icon {
+            font-size: 24px;
+            transition: transform 0.3s;
+            color: #7f8c8d;
         }
-        
-        .result-item:last-child {
+
+        .expanded .expand-icon {
+            transform: rotate(180deg);
+            color: #4285f4;
+        }
+
+        .result-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+
+        .expanded .result-details {
+            max-height: 1000px;
+        }
+
+        .detail-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detail-item:last-child {
             border-bottom: none;
         }
-        
-        .result-item:hover {
-            background-color: #e8f4fc;
+
+        .detail-date {
+            font-weight: bold;
+            color: #2c3e50;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 5px;
         }
-        
-        .no-results {
+
+        .detail-resource {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .no-results, .error-message {
             text-align: center;
             padding: 40px;
             color: #7f8c8d;
-            font-size: 1.2rem;
+            background: #f8f9fa;
+            border-radius: 10px;
         }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #3498db;
-            font-size: 1.2rem;
-        }
-        
-        .error {
+
+        .error-message {
             color: #e74c3c;
-            text-align: center;
-            padding: 40px;
-            font-size: 1.2rem;
+            background: #fde8e6;
         }
-        
-        .result-highlight {
-            background-color: #ffeaa7;
-            padding: 2px 5px;
-            border-radius: 3px;
-        }
-        
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            color: #7f8c8d;
+
+        .instructions {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
             font-size: 0.9rem;
         }
-        
-        .stats {
-            text-align: center;
-            margin: 20px 0;
-            color: #7f8c8d;
+
+        .instructions h3 {
+            color: #4285f4;
+            margin-bottom: 10px;
         }
-        
-        @media (max-width: 768px) {
-            .search-container {
+
+        .instructions ol {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        code {
+            background: #f1f1f1;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        @media (max-width: 600px) {
+            .search-section {
                 flex-direction: column;
-                border-radius: 10px;
+                align-items: stretch;
             }
             
-            #search-input {
-                border-radius: 10px 10px 0 0;
+            #searchInput, #searchType, #searchButton {
+                width: 100%;
             }
             
-            #search-button {
-                border-radius: 0 0 10px 10px;
+            .person-details {
+                flex-direction: column;
+                gap: 8px;
             }
-            
-            h1 {
-                font-size: 2rem;
-            }
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-id-card"></i> Buscador por DNI</h1>
-            <p class="description">Busca información en nuestra base de datos por número de DNI</p>
+            <h1>Buscador de Legajos</h1>
+            <p class="description">Busque por nombre o DNI para encontrar información de legajos almacenados en Google Sheets</p>
         </header>
-        
+
+        <div class="search-section">
+            <input type="text" id="searchInput" placeholder="Ingrese término de búsqueda...">
+            <select id="searchType">
+                <option value="nombre">Buscar por Nombre</option>
+                <option value="dni">Buscar por DNI</option>
+            </select>
+            <button id="searchButton">Buscar</button>
+        </div>
+
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Buscando información...</p>
+        </div>
+
+        <div class="results-section" id="resultsContainer">
+            <!-- Los resultados se mostrarán aquí -->
+        </div>
+
         <div class="instructions">
-            <h2><i class="fas fa-info-circle"></i> Instrucciones de uso</h2>
+            <h3>Configuración necesaria:</h3>
             <ol>
-                <li>Introduce un número de DNI en el campo de texto</li>
-                <li>Haz clic en "Buscar" o presiona Enter</li>
-                <li>Los resultados se agruparán por DNI y se mostrarán todas las coincidencias</li>
+                <li>Publica tu Google Sheet como una página web: <code>Archivo → Publicar en la web</code></li>
+                <li>Copia el ID de tu hoja de cálculo de la URL (el código entre /d/ y /edit)</li>
+                <li>Reemplaza el valor de <code>SHEET_ID</code> en el código JavaScript con tu ID</li>
+                <li>Asegúrate de que tu hoja tenga las columnas: B (Fecha), C (Nombre), D (DNI), F (Localidad), G (Recurso)</li>
             </ol>
         </div>
-        
-        <div class="search-container">
-            <input type="text" id="search-input" placeholder="Introduce un DNI para buscar...">
-            <button id="search-button">Buscar</button>
-        </div>
-        
-        <div class="stats">
-            <p id="stats-text">Cargando datos desde Google Sheets...</p>
-        </div>
-        
-        <div id="results-container" class="results-container">
-            <div class="loading">
-                <i class="fas fa-spinner fa-spin fa-2x"></i>
-                <p>Cargando datos desde Google Sheets...</p>
-            </div>
-        </div>
-        
+
         <footer>
-            <p>© 2023 Buscador por DNI - Los datos se cargan desde Google Sheets en tiempo real</p>
+            <p>Buscador conectado a Google Sheets | Desarrollado para gestión de legajos</p>
         </footer>
     </div>
 
     <script>
-        // URL de tu Google Sheets publicada como CSV
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vShpaQIr1gFVnJcA_ilcdAGVW8QHomQtdERD9_e-GFzLd-F-_zzCzlb2tUZ6ohdEoeqcfPGuVco7L09/pub?gid=501367966&single=true&output=csv';
-        
-        // Variables globales
-        let allData = [];
-        
-        // Elementos del DOM
-        const searchInput = document.getElementById('search-input');
-        const searchButton = document.getElementById('search-button');
-        const resultsContainer = document.getElementById('results-container');
-        const statsText = document.getElementById('stats-text');
-        
-        // Cargar datos al iniciar la página
-        document.addEventListener('DOMContentLoaded', loadData);
-        
-        // Event listeners
-        searchButton.addEventListener('click', performSearch);
-        searchInput.addEventListener('keyup', function(event) {
-            if (event.key === 'Enter') {
-                performSearch();
-            }
-        });
-        
-        // Función para cargar datos desde Google Sheets
-        async function loadData() {
-            showLoading();
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const searchType = document.getElementById('searchType');
+            const searchButton = document.getElementById('searchButton');
+            const loadingElement = document.querySelector('.loading');
+            const resultsContainer = document.getElementById('resultsContainer');
             
-            try {
-                const response = await fetch(SHEET_URL);
-                const csvData = await response.text();
-                
-                // Convertir CSV a array de objetos
-                allData = parseCSV(csvData);
-                
-                if (allData.length > 0) {
-                    showMessage('Introduce un DNI para comenzar la búsqueda');
-                    statsText.textContent = `Cargados ${allData.length} registros desde Google Sheets`;
-                } else {
-                    showError('No se encontraron datos en la hoja de cálculo');
-                    statsText.textContent = 'No se encontraron datos en la hoja de cálculo';
-                }
-            } catch (error) {
-                console.error('Error cargando datos:', error);
-                showError('Error al cargar los datos. Verifica la conexión y la URL de la hoja de cálculo.');
-                statsText.textContent = 'Error al cargar los datos';
-            }
-        }
-        
-        // Función para analizar CSV
-        function parseCSV(csv) {
-            const lines = csv.split('\n');
-            const result = [];
+            // ID de tu hoja de cálculo pública de Google Sheets (debes reemplazarlo con el tuyo)
+            const SHEET_ID = 'e/2PACX-1vS4oFHibBlfrbFDUF-06LUToJ8SWSe0d-eAs8HYHj4K-cvFWQMZVtQGNQgjqU__04wFSsPs0SitBonN/pub?gid=1830275885&single=true&output=csv';
+            const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vS4oFHibBlfrbFDUF-06LUToJ8SWSe0d-eAs8HYHj4K-cvFWQMZVtQGNQgjqU__04wFSsPs0SitBonN/pub?gid=1830275885&single=true&output=csv/gviz/tq?tqx=out:json`;
             
-            if (lines.length < 2) return result;
-            
-            // Obtener encabezados
-            const headers = lines[0].split(',').map(header => header.trim());
-            
-            // Procesar cada línea
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
+            // Función para realizar la búsqueda
+            function performSearch() {
+                const searchTerm = searchInput.value.trim();
+                const type = searchType.value;
                 
-                const obj = {};
-                // Manejar campos con comas usando expresiones regulares
-                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                
-                for (let j = 0; j < headers.length; j++) {
-                    // Limpiar valores entre comillas
-                    let value = currentline[j] ? currentline[j].trim() : '';
-                    if (value.startsWith('"') && value.endsWith('"')) {
-                        value = value.substring(1, value.length - 1);
-                    }
-                    obj[headers[j]] = value;
+                if (!searchTerm) {
+                    showMessage('Por favor, ingrese un término de búsqueda', 'error');
+                    return;
                 }
                 
-                result.push(obj);
-            }
-            
-            return result;
-        }
-        
-        // Función para realizar la búsqueda por DNI
-        function performSearch() {
-            const searchTerm = searchInput.value.trim();
-            
-            if (!searchTerm) {
-                showMessage('Por favor, introduce un DNI para buscar');
-                return;
-            }
-            
-            if (allData.length === 0) {
-                showError('No hay datos disponibles para buscar');
-                return;
-            }
-            
-            // Filtrar datos según el DNI (columna E)
-            const filteredData = allData.filter(item => {
-                // Obtener todas las claves del objeto
-                const keys = Object.keys(item);
-                // Asumimos que la columna E es la quinta columna (índice 4)
-                // Pero también buscamos por nombre de columna por si acaso
-                const dniValue = item[keys[4]] || item['DNI'] || item['dni'] || item['Dni'];
-                return dniValue && dniValue.includes(searchTerm);
-            });
-            
-            // Agrupar por DNI
-            const groupedResults = groupByDNI(filteredData);
-            
-            displayGroupedResults(groupedResults, searchTerm);
-            statsText.textContent = `Encontrados ${filteredData.length} resultados para el DNI "${searchTerm}" agrupados en ${Object.keys(groupedResults).length} grupos`;
-        }
-        
-        // Función para agrupar resultados por DNI
-        function groupByDNI(data) {
-            const grouped = {};
-            
-            data.forEach(item => {
-                // Obtener todas las claves del objeto
-                const keys = Object.keys(item);
-                // Asumimos que la columna E es la quinta columna (índice 4)
-                // Pero también buscamos por nombre de columna por si acaso
-                const dniValue = item[keys[4]] || item['DNI'] || item['dni'] || item['Dni'] || 'Sin DNI';
+                // Mostrar carga
+                loadingElement.style.display = 'block';
+                resultsContainer.innerHTML = '';
                 
-                if (!grouped[dniValue]) {
-                    grouped[dniValue] = [];
-                }
-                
-                grouped[dniValue].push(item);
-            });
-            
-            return grouped;
-        }
-        
-        // Función para mostrar resultados agrupados
-        function displayGroupedResults(groupedResults, searchTerm) {
-            if (Object.keys(groupedResults).length === 0) {
-                resultsContainer.innerHTML = `
-                    <div class="no-results">
-                        <i class="fas fa-search fa-2x"></i>
-                        <p>No se encontraron resultados para el DNI "${searchTerm}"</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '';
-            
-            for (const dni in groupedResults) {
-                const group = groupedResults[dni];
-                html += `
-                    <div class="result-group">
-                        <div class="group-header">
-                            <span>DNI: ${dni}</span>
-                            <span class="group-count">${group.length} coincidencia(s)</span>
-                        </div>
-                `;
-                
-                group.forEach(item => {
-                    html += '<div class="result-item">';
-                    for (let key in item) {
-                        let value = item[key];
-                        // Resaltar el término de búsqueda en los resultados
-                        if (key === 'DNI' || key === 'dni' || key === 'Dni' || value === dni) {
-                            const regex = new RegExp(`(${searchTerm})`, 'gi');
-                            value = value.replace(regex, '<span class="result-highlight">$1</span>');
+                // Realizar la solicitud a Google Sheets
+                fetch(SHEET_URL)
+                    .then(response => response.text())
+                    .then(data => {
+                        // Parsear la respuesta especial de Google Sheets
+                        const jsonData = JSON.parse(data.substring(47).slice(0, -2));
+                        const sheetData = jsonData.table.rows;
+                        
+                        // Procesar los datos
+                        const processedData = processSheetData(sheetData);
+                        
+                        // Filtrar según el tipo de búsqueda
+                        let results = [];
+                        if (type === 'nombre') {
+                            results = processedData.filter(item => 
+                                item.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+                            );
+                        } else if (type === 'dni') {
+                            results = processedData.filter(item => 
+                                item.dni.includes(searchTerm)
+                            );
                         }
-                        html += `<p><strong>${key}:</strong> ${value}</p>`;
+                        
+                        loadingElement.style.display = 'none';
+                        
+                        if (results.length === 0) {
+                            showMessage('No se encontraron resultados para su búsqueda', 'no-results');
+                            return;
+                        }
+                        
+                        displayResults(results);
+                    })
+                    .catch(error => {
+                        loadingElement.style.display = 'none';
+                        showMessage(`Error de conexión: ${error.message}`, 'error');
+                        console.error('Error:', error);
+                    });
+            }
+            
+            // Función para procesar los datos de la hoja
+            function processSheetData(sheetData) {
+                const result = [];
+                
+                // Saltar la primera fila (encabezados) si existe
+                const startRow = sheetData[0].c[0] && isNaN(sheetData[0].c[0].v) ? 1 : 0;
+                
+                for (let i = startRow; i < sheetData.length; i++) {
+                    const row = sheetData[i];
+                    result.push({
+                        fecha: row.c[1] ? row.c[1].v : '', // Columna B
+                        nombre: row.c[2] ? row.c[2].v : '', // Columna C
+                        dni: row.c[3] ? row.c[3].v : '', // Columna D
+                        localidad: row.c[5] ? row.c[5].v : '', // Columna F
+                        recurso: row.c[6] ? row.c[6].v : '' // Columna G
+                    });
+                }
+                
+                return result;
+            }
+            
+            // Función para mostrar mensajes
+            function showMessage(message, type) {
+                resultsContainer.innerHTML = `<div class="${type}">${message}</div>`;
+            }
+            
+            // Función para mostrar resultados
+            function displayResults(data) {
+                // Agrupar por DNI
+                const groupedByDni = {};
+                
+                data.forEach(item => {
+                    if (!groupedByDni[item.dni]) {
+                        groupedByDni[item.dni] = [];
                     }
-                    html += '</div>';
+                    groupedByDni[item.dni].push(item);
                 });
                 
-                html += '</div>';
+                // Crear HTML para los resultados agrupados
+                let html = '';
+                
+                for (const dni in groupedByDni) {
+                    const items = groupedByDni[dni];
+                    // Ordenar por fecha (más reciente primero)
+                    items.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                    
+                    // El primer elemento tiene toda la información que necesitamos
+                    const firstItem = items[0];
+                    
+                    html += `
+                        <div class="result-item">
+                            <div class="result-header">
+                                <div class="person-info">
+                                    <div class="person-name">${firstItem.nombre}</div>
+                                    <div class="person-details">
+                                        <span class="detail-badge">DNI: ${firstItem.dni}</span>
+                                        <span class="detail-badge">Localidad: ${firstItem.localidad}</span>
+                                    </div>
+                                </div>
+                                <div class="expand-icon">▼</div>
+                            </div>
+                            <div class="result-details">
+                    `;
+                    
+                    // Agregar cada fecha y recurso
+                    items.forEach(item => {
+                        // Formatear la fecha
+                        const fecha = new Date(item.fecha);
+                        const formattedDate = fecha.toLocaleDateString('es-AR');
+                        
+                        html += `
+                            <div class="detail-item">
+                                <span class="detail-date">${formattedDate}</span>
+                                <span class="detail-resource">${item.recurso}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                resultsContainer.innerHTML = html;
+                
+                // Agregar event listeners para expandir/colapsar
+                const resultHeaders = document.querySelectorAll('.result-header');
+                resultHeaders.forEach(header => {
+                    header.addEventListener('click', function() {
+                        this.parentElement.classList.toggle('expanded');
+                    });
+                });
             }
             
-            resultsContainer.innerHTML = html;
-        }
-        
-        // Funciones auxiliares para mostrar estados
-        function showLoading() {
-            resultsContainer.innerHTML = `
-                <div class="loading">
-                    <i class="fas fa-spinner fa-spin fa-2x"></i>
-                    <p>Cargando datos desde Google Sheets...</p>
-                </div>
-            `;
-        }
-        
-        function showMessage(message) {
-            resultsContainer.innerHTML = `
-                <div class="no-results">
-                    <i class="fas fa-search fa-2x"></i>
-                    <p>${message}</p>
-                </div>
-            `;
-        }
-        
-        function showError(message) {
-            resultsContainer.innerHTML = `
-                <div class="error">
-                    <i class="fas fa-exclamation-triangle fa-2x"></i>
-                    <p>${message}</p>
-                </div>
-            `;
-        }
+            // Event listeners
+            searchButton.addEventListener('click', performSearch);
+            
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+        });
     </script>
 </body>
 </html>
-
