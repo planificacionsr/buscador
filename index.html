@@ -327,12 +327,12 @@
         </div>
 
         <div class="instructions">
-            <h3>Configuración necesaria:</h3>
+            <h3>Información importante:</h3>
+            <p>Esta versión utiliza la URL de tu hoja de cálculo pública. Si tienes problemas, asegúrate de que:</p>
             <ol>
-                <li>Publica tu Google Sheet como una página web: <code>Archivo → Publicar en la web</code></li>
-                <li>Copia el ID de tu hoja de cálculo de la URL (el código entre /d/ y /edit)</li>
-                <li>Reemplaza el valor de <code>SHEET_ID</code> en el código JavaScript con tu ID</li>
-                <li>Asegúrate de que tu hoja tenga las columnas: B (Fecha), C (Nombre), D (DNI), F (Localidad), G (Recurso)</li>
+                <li>Tu hoja de cálculo esté publicada correctamente (Archivo → Publicar en la web)</li>
+                <li>La URL sea accesible públicamente</li>
+                <li>Las columnas estén en el orden correcto: B (Fecha), C (Nombre), D (DNI), F (Localidad), G (Recurso)</li>
             </ol>
         </div>
 
@@ -349,9 +349,79 @@
             const loadingElement = document.querySelector('.loading');
             const resultsContainer = document.getElementById('resultsContainer');
             
-            // ID de tu hoja de cálculo pública de Google Sheets (debes reemplazarlo con el tuyo)
-            const SHEET_ID = 'e/2PACX-1vS4oFHibBlfrbFDUF-06LUToJ8SWSe0d-eAs8HYHj4K-cvFWQMZVtQGNQgjqU__04wFSsPs0SitBonN/pub?gid=1830275885&single=true&output=csv';
-            const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vS4oFHibBlfrbFDUF-06LUToJ8SWSe0d-eAs8HYHj4K-cvFWQMZVtQGNQgjqU__04wFSsPs0SitBonN/pub?gid=1830275885&single=true&output=csv/gviz/tq?tqx=out:json`;
+            // URL CORREGIDA - Usando tu enlace público de Google Sheets
+            const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4oFHibBlfrbFDUF-06LUToJ8SWSe0d-eAs8HYHj4K-cvFWQMZVtQGNQgjqU__04wFSsPs0SitBonN/pub?gid=1830275885&single=true&output=csv';
+            
+            // Variable para almacenar los datos
+            let sheetData = [];
+            
+            // Cargar datos al iniciar la página
+            loadData();
+            
+            // Función para cargar datos desde Google Sheets
+            function loadData() {
+                loadingElement.style.display = 'block';
+                
+                fetch(SHEET_URL)
+                    .then(response => response.text())
+                    .then(data => {
+                        // Parsear el CSV
+                        sheetData = parseCSV(data);
+                        loadingElement.style.display = 'none';
+                    })
+                    .catch(error => {
+                        loadingElement.style.display = 'none';
+                        showMessage(`Error al cargar los datos: ${error.message}`, 'error');
+                        console.error('Error:', error);
+                    });
+            }
+            
+            // Función para parsear CSV
+            function parseCSV(csvText) {
+                const lines = csvText.split('\n');
+                const result = [];
+                
+                // Empezar desde 1 para saltar los encabezados
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line) {
+                        // Manejar comas dentro de campos entre comillas
+                        const fields = line.split(',').reduce((acc, field) => {
+                            if (field.startsWith('"') && !field.endsWith('"')) {
+                                acc.inQuote = true;
+                                acc.temp = field;
+                                return acc;
+                            }
+                            
+                            if (acc.inQuote) {
+                                if (field.endsWith('"')) {
+                                    acc.inQuote = false;
+                                    acc.result.push(acc.temp + ',' + field);
+                                    acc.temp = '';
+                                } else {
+                                    acc.temp += ',' + field;
+                                }
+                                return acc;
+                            }
+                            
+                            acc.result.push(field.replace(/^"|"$/g, ''));
+                            return acc;
+                        }, {result: [], inQuote: false, temp: ''}).result;
+                        
+                        if (fields.length >= 7) { // Asegurarse de que hay suficientes columnas
+                            result.push({
+                                fecha: fields[1] || '', // Columna B
+                                nombre: fields[2] || '', // Columna C
+                                dni: fields[3] || '', // Columna D
+                                localidad: fields[5] || '', // Columna F
+                                recurso: fields[6] || '' // Columna G
+                            });
+                        }
+                    }
+                }
+                
+                return result;
+            }
             
             // Función para realizar la búsqueda
             function performSearch() {
@@ -363,68 +433,29 @@
                     return;
                 }
                 
-                // Mostrar carga
-                loadingElement.style.display = 'block';
-                resultsContainer.innerHTML = '';
-                
-                // Realizar la solicitud a Google Sheets
-                fetch(SHEET_URL)
-                    .then(response => response.text())
-                    .then(data => {
-                        // Parsear la respuesta especial de Google Sheets
-                        const jsonData = JSON.parse(data.substring(47).slice(0, -2));
-                        const sheetData = jsonData.table.rows;
-                        
-                        // Procesar los datos
-                        const processedData = processSheetData(sheetData);
-                        
-                        // Filtrar según el tipo de búsqueda
-                        let results = [];
-                        if (type === 'nombre') {
-                            results = processedData.filter(item => 
-                                item.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-                            );
-                        } else if (type === 'dni') {
-                            results = processedData.filter(item => 
-                                item.dni.includes(searchTerm)
-                            );
-                        }
-                        
-                        loadingElement.style.display = 'none';
-                        
-                        if (results.length === 0) {
-                            showMessage('No se encontraron resultados para su búsqueda', 'no-results');
-                            return;
-                        }
-                        
-                        displayResults(results);
-                    })
-                    .catch(error => {
-                        loadingElement.style.display = 'none';
-                        showMessage(`Error de conexión: ${error.message}`, 'error');
-                        console.error('Error:', error);
-                    });
-            }
-            
-            // Función para procesar los datos de la hoja
-            function processSheetData(sheetData) {
-                const result = [];
-                
-                // Saltar la primera fila (encabezados) si existe
-                const startRow = sheetData[0].c[0] && isNaN(sheetData[0].c[0].v) ? 1 : 0;
-                
-                for (let i = startRow; i < sheetData.length; i++) {
-                    const row = sheetData[i];
-                    result.push({
-                        fecha: row.c[1] ? row.c[1].v : '', // Columna B
-                        nombre: row.c[2] ? row.c[2].v : '', // Columna C
-                        dni: row.c[3] ? row.c[3].v : '', // Columna D
-                        localidad: row.c[5] ? row.c[5].v : '', // Columna F
-                        recurso: row.c[6] ? row.c[6].v : '' // Columna G
-                    });
+                if (sheetData.length === 0) {
+                    showMessage('Los datos aún se están cargando. Por favor, espere.', 'error');
+                    return;
                 }
                 
-                return result;
+                // Filtrar según el tipo de búsqueda
+                let results = [];
+                if (type === 'nombre') {
+                    results = sheetData.filter(item => 
+                        item.nombre && item.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                } else if (type === 'dni') {
+                    results = sheetData.filter(item => 
+                        item.dni && item.dni.includes(searchTerm)
+                    );
+                }
+                
+                if (results.length === 0) {
+                    showMessage('No se encontraron resultados para su búsqueda', 'no-results');
+                    return;
+                }
+                
+                displayResults(results);
             }
             
             // Función para mostrar mensajes
