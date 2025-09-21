@@ -1,7 +1,7 @@
 {
   "users": {
     "admin": "admin123",
-    "analista": "analista2023",
-    "consultor": "consultor456"
+    "nocampo": "analista2023",
+    "navaca": "consultor456"
   }
 }
