@@ -328,11 +328,11 @@
 
         <div class="instructions">
             <h3>Información importante:</h3>
-            <p>Esta versión utiliza la URL de tu hoja de cálculo pública. Si tienes problemas, asegúrate de que:</p>
+            <p>Esta versión incluye un sistema mejorado para el manejo de fechas. Si tienes problemas con el formato de fecha en tu hoja de cálculo, asegúrate de que:</p>
             <ol>
-                <li>Tu hoja de cálculo esté publicada correctamente (Archivo → Publicar en la web)</li>
-                <li>La URL sea accesible públicamente</li>
-                <li>Las columnas estén en el orden correcto: B (Fecha), C (Nombre), D (DNI), F (Localidad), G (Recurso)</li>
+                <li>Las fechas estén en formato día/mes/año (por ejemplo: 7/6/2022)</li>
+                <li>Usen números para los meses (no texto como "jun")</li>
+                <li>Todas las fechas tengan el año completo (4 dígitos)</li>
             </ol>
         </div>
 
@@ -349,7 +349,7 @@
             const loadingElement = document.querySelector('.loading');
             const resultsContainer = document.getElementById('resultsContainer');
             
-            // URL CORREGIDA - Usando tu enlace público de Google Sheets
+            // URL de tu hoja de cálculo pública
             const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4oFHibBlfrbFDUF-06LUToJ8SWSe0d-eAs8HYHj4K-cvFWQMZVtQGNQgjqU__04wFSsPs0SitBonN/pub?gid=1830275885&single=true&output=csv';
             
             // Variable para almacenar los datos
@@ -423,6 +423,50 @@
                 return result;
             }
             
+            // Función para analizar y formatear fechas correctamente
+            function parseDate(dateStr) {
+                if (!dateStr || dateStr.toLowerCase() === 'invalid date') return null;
+                
+                // Si ya es una fecha válida
+                if (!isNaN(new Date(dateStr))) {
+                    return new Date(dateStr);
+                }
+                
+                // Intentar parsear formato día/mes/año
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1; // Los meses en JS son 0-11
+                    const year = parseInt(parts[2], 10);
+                    
+                    // Asegurarse de que el año tenga 4 dígitos
+                    const fullYear = year < 100 ? 2000 + year : year;
+                    
+                    const date = new Date(fullYear, month, day);
+                    if (!isNaN(date)) return date;
+                }
+                
+                // Intentar otros formatos si el anterior falla
+                const timestamp = Date.parse(dateStr);
+                if (!isNaN(timestamp)) {
+                    return new Date(timestamp);
+                }
+                
+                console.warn('Fecha no válida:', dateStr);
+                return null;
+            }
+            
+            // Función para formatear fecha a formato legible
+            function formatDate(date) {
+                if (!date || isNaN(date)) return 'Fecha no válida';
+                
+                return date.toLocaleDateString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+            }
+            
             // Función para realizar la búsqueda
             function performSearch() {
                 const searchTerm = searchInput.value.trim();
@@ -480,8 +524,13 @@
                 
                 for (const dni in groupedByDni) {
                     const items = groupedByDni[dni];
+                    
                     // Ordenar por fecha (más reciente primero)
-                    items.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                    items.sort((a, b) => {
+                        const dateA = parseDate(a.fecha) || new Date(0);
+                        const dateB = parseDate(b.fecha) || new Date(0);
+                        return dateB - dateA;
+                    });
                     
                     // El primer elemento tiene toda la información que necesitamos
                     const firstItem = items[0];
@@ -503,9 +552,9 @@
                     
                     // Agregar cada fecha y recurso
                     items.forEach(item => {
-                        // Formatear la fecha
-                        const fecha = new Date(item.fecha);
-                        const formattedDate = fecha.toLocaleDateString('es-AR');
+                        // Parsear y formatear la fecha correctamente
+                        const fecha = parseDate(item.fecha);
+                        const formattedDate = fecha ? formatDate(fecha) : 'Fecha no válida';
                         
                         html += `
                             <div class="detail-item">
