@@ -1,0 +1,25 @@
+/* Tus estilos existentes para el buscador */
+/* Asegúrate de incluir los estilos para la información de usuario y botón de logout */
+
+.user-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+}
+
+#logoutButton {
+    padding: 8px 15px;
+    background-color: #ea4335;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#logoutButton:hover {
+    background-color: #d33426;
+}
