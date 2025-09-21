@@ -251,7 +251,7 @@
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+           100% { transform: rotate(360deg); }
         }
 
         .results-section {
@@ -416,6 +416,7 @@
             <div class="instructions">
                 <h3>Información importante:</h3>
                 <p>Para acceder al sistema, necesita un usuario y contraseña proporcionados por el administrador.</p>
+                <p><strong>Nota:</strong> Si ha modificado las credenciales, recargue la página completamente (Ctrl+F5) para ver los cambios.</p>
             </div>
         </div>
     </div>
@@ -458,6 +459,7 @@
         
         // Función para normalizar texto (quitar tildes)
         function normalizarTexto(texto) {
+            if (!texto) return '';
             return texto
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '')
@@ -484,6 +486,45 @@
             resultsContainer.innerHTML = `<div class="${type}">${message}</div>`;
         }
         
+        // Función para analizar y formatear fechas correctamente
+        function parseDate(dateStr) {
+            if (!dateStr || dateStr.toLowerCase() === 'invalid date') return null;
+            
+            // Intentar parsear formato día/mes/año
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1; // Los meses en JS son 0-11
+                const year = parseInt(parts[2], 10);
+                
+                // Asegurarse de que el año tenga 4 dígitos
+                const fullYear = year < 100 ? 2000 + year : year;
+                
+                const date = new Date(fullYear, month, day);
+                if (!isNaN(date)) return date;
+            }
+            
+            // Intentar otros formatos si el anterior falla
+            const timestamp = Date.parse(dateStr);
+            if (!isNaN(timestamp)) {
+                return new Date(timestamp);
+            }
+            
+            console.warn('Fecha no válida:', dateStr);
+            return null;
+        }
+        
+        // Función para formatear fecha a formato legible
+        function formatDate(date) {
+            if (!date || isNaN(date)) return 'Fecha no válida';
+            
+            return date.toLocaleDateString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+        
         // ===== LÓGICA DE AUTENTICACIÓN =====
         document.addEventListener('DOMContentLoaded', function() {
             const loginPage = document.getElementById('login-page');
@@ -508,6 +549,42 @@
             const errorMessage = document.getElementById('errorMessage');
             const successMessage = document.getElementById('successMessage');
             
+            // Variable para almacenar credenciales en memoria
+            let credentialsCache = null;
+            let lastFetchTime = 0;
+            
+            async function loadCredentials() {
+                // Usar cache para evitar múltiples solicitudes (válido por 5 segundos)
+                const now = Date.now();
+                if (credentialsCache && (now - lastFetchTime < 5000)) {
+                    return credentialsCache;
+                }
+                
+                try {
+                    // Forzar la recarga evitando la caché del navegador
+                    const response = await fetch('data/config.json?t=' + now, {
+                        cache: 'no-store'
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('No se pudo cargar el archivo de configuración');
+                    }
+                    
+                    const config = await response.json();
+                    credentialsCache = config.users;
+                    lastFetchTime = now;
+                    return credentialsCache;
+                } catch (error) {
+                    console.error('Error cargando credenciales:', error);
+                    // Credenciales por defecto en caso de error
+                    return {
+                        "admin": "admin123",
+                        "analista": "analista2023",
+                        "consultor": "consultor456"
+                    };
+                }
+            }
+            
             async function handleLogin() {
                 const username = usernameInput.value.trim();
                 const password = passwordInput.value.trim();
@@ -518,14 +595,7 @@
                 }
                 
                 try {
-                    // Cargar credenciales desde el archivo JSON
-                    const response = await fetch('data/config.json');
-                    if (!response.ok) {
-                        throw new Error('No se pudo cargar el archivo de configuración');
-                    }
-                    
-                    const config = await response.json();
-                    const credentials = config.users;
+                    const credentials = await loadCredentials();
                     
                     if (credentials[username] === password) {
                         showLoginSuccess('¡Credenciales correctas!');
@@ -578,6 +648,8 @@
                 buscadorPage.style.display = 'none';
                 usernameInput.value = '';
                 passwordInput.value = '';
+                // Limpiar cache de credenciales al cerrar sesión
+                credentialsCache = null;
             });
         });
         
@@ -701,7 +773,13 @@
                 
                 for (const dni in groupedByDni) {
                     const items = groupedByDni[dni];
-                    items.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                    
+                    // Ordenar por fecha (más reciente primero) con manejo de fechas inválidas
+                    items.sort((a, b) => {
+                        const dateA = parseDate(a.fecha) || new Date(0);
+                        const dateB = parseDate(b.fecha) || new Date(0);
+                        return dateB - dateA;
+                    });
                     
                     const firstItem = items[0];
                     
@@ -721,8 +799,9 @@
                     `;
                     
                     items.forEach(item => {
-                        const fecha = new Date(item.fecha);
-                        const formattedDate = fecha.toLocaleDateString('es-AR');
+                        // Parsear y formatear la fecha correctamente
+                        const fecha = parseDate(item.fecha);
+                        const formattedDate = fecha ? formatDate(fecha) : 'Fecha no válida';
                         
                         html += `
                             <div class="detail-item">
