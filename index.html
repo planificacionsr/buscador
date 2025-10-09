@@ -451,9 +451,12 @@
     </div>
 
     <script>
-        // ===== CONFIGURACIÓN =====
-        // URL de la hoja de cálculo pública
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4oFHibBlfrbFDUF-06LUToJ8SWSe0d-eAs8HYHj4K-cvFWQMZVtQGNQgjqU__04wFSsPs0SitBonN/pub?gid=1830275885&single=true&output=csv';
+// ===== CONFIGURACIÓN =====
+// URLs de las 3 hojas de cálculo públicas
+const SHEET_URLS = [
+    'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4oFHibBlfrbFDUF-06LUToJ8SWSe0d-eAs8HYHj4K-cvFWQMZVtQGNQgjqU__04wFSsPs0SitBonN/pub?gid=1830275885&single=true&output=csv',
+    '[URL_HOJA_2]',
+    '[URL_HOJA_3]';
         
         // ===== FUNCIONES DE UTILIDAD =====
         
@@ -665,21 +668,44 @@
             
             // Cargar datos al iniciar
             loadData();
-            
+
             function loadData() {
-                loadingElement.style.display = 'block';
-                
-                fetch(SHEET_URL)
-                    .then(response => response.text())
-                    .then(data => {
-                        sheetData = parseCSV(data);
-                        loadingElement.style.display = 'none';
-                    })
-                    .catch(error => {
-                        loadingElement.style.display = 'none';
-                        showMessage(`Error al cargar los datos: ${error.message}`, 'buscador-error');
-                    });
+    loadingElement.style.display = 'block';
+    
+    // Crear un array de promesas para las 3 hojas
+    const fetchPromises = SHEET_URLS.map(url => 
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status} cargando ${url}`);
+                }
+                return response.text();
+            })
+            .then(data => parseCSV(data))
+            .catch(error => {
+                console.error(`Error cargando datos de ${url}:`, error);
+                return []; // Retornar array vacío en caso de error
+            })
+    );
+    
+    // Esperar a que las 3 hojas se carguen
+    Promise.all(fetchPromises)
+        .then(results => {
+            // Combinar todos los datos de las 3 hojas
+            sheetData = results.flat();
+            loadingElement.style.display = 'none';
+            
+            if (sheetData.length === 0) {
+                showMessage('No se pudieron cargar los datos de ninguna hoja', 'buscador-error');
+            } else {
+                console.log(`Datos cargados: ${sheetData.length} registros de ${SHEET_URLS.length} hojas`);
             }
+        })
+        .catch(error => {
+            loadingElement.style.display = 'none';
+            showMessage(`Error al cargar los datos: ${error.message}`, 'buscador-error');
+        });
+}
             
             function parseCSV(csvText) {
                 const lines = csvText.split('\n');
@@ -836,3 +862,4 @@
     </script>
 </body>
 </html>
+
