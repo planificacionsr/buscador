@@ -300,6 +300,27 @@
             font-size: 0.9rem;
         }
 
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .print-button {
+            padding: 8px 15px;
+            background-color: #fbbc05;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .print-button:hover {
+            background-color: #e6a800;
+        }
+
         .expand-icon {
             font-size: 24px;
             transition: transform 0.3s;
@@ -359,6 +380,27 @@
             background: #fde8e6;
         }
 
+        /* Estilos para impresión */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .print-visible, .print-visible * {
+                visibility: visible;
+            }
+            .print-visible {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+                padding: 20px;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
         @media (max-width: 600px) {
             .search-section {
                 flex-direction: column;
@@ -378,6 +420,11 @@
             .person-details {
                 flex-direction: column;
                 gap: 8px;
+            }
+            
+            .header-controls {
+                flex-direction: column;
+                gap: 10px;
             }
         }
     </style>
@@ -451,12 +498,14 @@
     </div>
 
     <script>
-// ===== CONFIGURACIÓN =====
-// URLs de las 3 hojas de cálculo públicas
-const SHEET_URLS = [
-    'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4oFHibBlfrbFDUF-06LUToJ8SWSe0d-eAs8HYHj4K-cvFWQMZVtQGNQgjqU__04wFSsPs0SitBonN/pub?gid=1830275885&single=true&output=csv',
-    'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ6GaCZyGe9AdaQHeYWHxw9-Ro4birzkG8RGITa6G42sWHLh3pUhk7zTv-La4x_qowzGdPtLXqz3PWh/pub?gid=190624415&single=true&output=csv',
-    '[URL_HOJA_3]';
+        // ===== CONFIGURACIÓN =====
+        // URLs de las 4 hojas de cálculo públicas
+        const SHEET_URLS = [
+            '[URL_HOJA_1]',
+            '[URL_HOJA_2]',
+            '[URL_HOJA_3]',
+            '[URL_HOJA_4]'
+        ];
         
         // ===== FUNCIONES DE UTILIDAD =====
         
@@ -526,6 +575,71 @@ const SHEET_URLS = [
                 month: '2-digit',
                 year: 'numeric'
             });
+        }
+
+        // Función para imprimir un resultado específico
+        function imprimirResultado(nombre, dni, localidad, items) {
+            const ventanaImpresion = window.open('', '_blank');
+            const contenido = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Legajo - ${nombre}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        .header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+                        .nombre { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+                        .detalles { margin-bottom: 20px; }
+                        .tabla { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        .tabla th, .tabla td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                        .tabla th { background-color: #f5f5f5; font-weight: bold; }
+                        .fecha { width: 120px; }
+                        @media print {
+                            body { margin: 0; }
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="nombre">${nombre}</div>
+                        <div class="detalles">
+                            <strong>DNI:</strong> ${dni} | 
+                            <strong>Localidad:</strong> ${localidad}
+                        </div>
+                    </div>
+                    <table class="tabla">
+                        <thead>
+                            <tr>
+                                <th class="fecha">Fecha</th>
+                                <th>Recurso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map(item => {
+                                const fecha = parseDate(item.fecha);
+                                const fechaFormateada = fecha ? formatDate(fecha) : 'Fecha no válida';
+                                return `
+                                    <tr>
+                                        <td class="fecha">${fechaFormateada}</td>
+                                        <td>${item.recurso}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 30px; text-align: center; color: #666; font-size: 12px;">
+                        Impreso el ${new Date().toLocaleDateString('es-AR')}
+                    </div>
+                    <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Imprimir
+                    </button>
+                </body>
+                </html>
+            `;
+            
+            ventanaImpresion.document.write(contenido);
+            ventanaImpresion.document.close();
         }
         
         // ===== LÓGICA DE AUTENTICACIÓN =====
@@ -668,44 +782,44 @@ const SHEET_URLS = [
             
             // Cargar datos al iniciar
             loadData();
-
-            function loadData() {
-    loadingElement.style.display = 'block';
-    
-    // Crear un array de promesas para las 3 hojas
-    const fetchPromises = SHEET_URLS.map(url => 
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Error ${response.status} cargando ${url}`);
-                }
-                return response.text();
-            })
-            .then(data => parseCSV(data))
-            .catch(error => {
-                console.error(`Error cargando datos de ${url}:`, error);
-                return []; // Retornar array vacío en caso de error
-            })
-    );
-    
-    // Esperar a que las 3 hojas se carguen
-    Promise.all(fetchPromises)
-        .then(results => {
-            // Combinar todos los datos de las 3 hojas
-            sheetData = results.flat();
-            loadingElement.style.display = 'none';
             
-            if (sheetData.length === 0) {
-                showMessage('No se pudieron cargar los datos de ninguna hoja', 'buscador-error');
-            } else {
-                console.log(`Datos cargados: ${sheetData.length} registros de ${SHEET_URLS.length} hojas`);
+            function loadData() {
+                loadingElement.style.display = 'block';
+                
+                // Crear un array de promesas para las 4 hojas
+                const fetchPromises = SHEET_URLS.map(url => 
+                    fetch(url)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Error ${response.status} cargando ${url}`);
+                            }
+                            return response.text();
+                        })
+                        .then(data => parseCSV(data))
+                        .catch(error => {
+                            console.error(`Error cargando datos de ${url}:`, error);
+                            return []; // Retornar array vacío en caso de error
+                        })
+                );
+                
+                // Esperar a que las 4 hojas se carguen
+                Promise.all(fetchPromises)
+                    .then(results => {
+                        // Combinar todos los datos de las 4 hojas
+                        sheetData = results.flat();
+                        loadingElement.style.display = 'none';
+                        
+                        if (sheetData.length === 0) {
+                            showMessage('No se pudieron cargar los datos de ninguna hoja', 'buscador-error');
+                        } else {
+                            console.log(`Datos cargados: ${sheetData.length} registros de ${SHEET_URLS.length} hojas`);
+                        }
+                    })
+                    .catch(error => {
+                        loadingElement.style.display = 'none';
+                        showMessage(`Error al cargar los datos: ${error.message}`, 'buscador-error');
+                    });
             }
-        })
-        .catch(error => {
-            loadingElement.style.display = 'none';
-            showMessage(`Error al cargar los datos: ${error.message}`, 'buscador-error');
-        });
-}
             
             function parseCSV(csvText) {
                 const lines = csvText.split('\n');
@@ -736,13 +850,13 @@ const SHEET_URLS = [
                             return acc;
                         }, {result: [], inQuote: false, temp: ''}).result;
                         
-                        if (fields.length >= 7) {
+                        if (fields.length >= 8) { // Ahora necesitamos 8 columnas
                             result.push({
-                                fecha: fields[1] || '',
-                                nombre: fields[2] || '',
-                                dni: fields[3] || '',
-                                localidad: fields[5] || '',
-                                recurso: fields[6] || ''
+                                fecha: fields[2] || '',      // Columna C
+                                nombre: fields[3] || '',     // Columna D
+                                dni: fields[4] || '',        // Columna E
+                                localidad: fields[6] || '',  // Columna G
+                                recurso: fields[7] || ''     // Columna H
                             });
                         }
                     }
@@ -819,7 +933,10 @@ const SHEET_URLS = [
                                         <span class="detail-badge">Localidad: ${firstItem.localidad}</span>
                                     </div>
                                 </div>
-                                <div class="expand-icon">▼</div>
+                                <div class="header-controls">
+                                    <button class="print-button" data-dni="${firstItem.dni}">🖨️ Imprimir</button>
+                                    <div class="expand-icon">▼</div>
+                                </div>
                             </div>
                             <div class="result-details">
                     `;
@@ -848,8 +965,23 @@ const SHEET_URLS = [
                 // Agregar event listeners para expandir/colapsar
                 const resultHeaders = document.querySelectorAll('.result-header');
                 resultHeaders.forEach(header => {
-                    header.addEventListener('click', function() {
-                        this.parentElement.classList.toggle('expanded');
+                    header.addEventListener('click', function(e) {
+                        // No expandir/colapsar si se hace clic en el botón de imprimir
+                        if (!e.target.classList.contains('print-button')) {
+                            this.parentElement.classList.toggle('expanded');
+                        }
+                    });
+                });
+                
+                // Agregar event listeners para imprimir
+                const printButtons = document.querySelectorAll('.print-button');
+                printButtons.forEach(button => {
+                    button.addEventListener('click', function(e) {
+                        e.stopPropagation(); // Evitar que se expanda/colapse
+                        const dni = this.getAttribute('data-dni');
+                        const items = groupedByDni[dni];
+                        const firstItem = items[0];
+                        imprimirResultado(firstItem.nombre, firstItem.dni, firstItem.localidad, items);
                     });
                 });
             }
@@ -862,5 +994,3 @@ const SHEET_URLS = [
     </script>
 </body>
 </html>
-
-
