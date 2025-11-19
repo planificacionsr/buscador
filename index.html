@@ -194,6 +194,44 @@
             background-color: #d33426;
         }
 
+        /* ESTILOS PARA EL TABLERO DE ESTADÍSTICAS */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border-left: 5px solid #4285f4;
+        }
+
+        .stat-card.beneficiarios {
+            border-left-color: #34a853;
+        }
+
+        .stat-card.recursos {
+            border-left-color: #fbbc05;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
         .search-section {
             display: flex;
             flex-wrap: wrap;
@@ -347,11 +385,18 @@
             border-bottom: 1px solid #eee;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            gap: 20px;
         }
 
         .detail-item:last-child {
             border-bottom: none;
+        }
+
+        .detail-main {
+            display: flex;
+            gap: 20px;
+            flex: 1;
         }
 
         .detail-date {
@@ -360,11 +405,27 @@
             background: #f8f9fa;
             padding: 5px 10px;
             border-radius: 5px;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .detail-content {
+            flex: 1;
         }
 
         .detail-resource {
             color: #7f8c8d;
             font-style: italic;
+            margin-bottom: 8px;
+        }
+
+        .detail-observaciones {
+            color: #5d6d7e;
+            font-size: 0.9rem;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 5px;
+            border-left: 3px solid #3498db;
         }
 
         .no-results, .buscador-error {
@@ -426,6 +487,16 @@
                 flex-direction: column;
                 gap: 10px;
             }
+            
+            .detail-item {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .detail-main {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -475,6 +546,18 @@
             <div class="user-info">
                 <span id="usernameDisplay"></span>
                 <button id="logoutButton">Cerrar sesión</button>
+            </div>
+        </div>
+
+        <!-- TABLERO DE ESTADÍSTICAS -->
+        <div class="dashboard" id="dashboard">
+            <div class="stat-card beneficiarios">
+                <div class="stat-number" id="totalBeneficiarios">0</div>
+                <div class="stat-label">Beneficiarios Únicos</div>
+            </div>
+            <div class="stat-card recursos">
+                <div class="stat-number" id="totalRecursos">0</div>
+                <div class="stat-label">Recursos Cargados</div>
             </div>
         </div>
 
@@ -577,6 +660,20 @@
             });
         }
 
+        // Función para calcular estadísticas
+        function calcularEstadisticas(data) {
+            // Beneficiarios únicos (DNIs únicos en columna E)
+            const dnisUnicos = new Set(data.map(item => item.dni).filter(dni => dni));
+            const totalBeneficiarios = dnisUnicos.size;
+            
+            // Recursos cargados (todos los registros en columna H)
+            const totalRecursos = data.filter(item => item.recurso).length;
+            
+            // Actualizar el dashboard
+            document.getElementById('totalBeneficiarios').textContent = totalBeneficiarios;
+            document.getElementById('totalRecursos').textContent = totalRecursos;
+        }
+
         // Función para imprimir un resultado específico
         function imprimirResultado(nombre, dni, localidad, items) {
             const ventanaImpresion = window.open('', '_blank');
@@ -594,6 +691,7 @@
                         .tabla th, .tabla td { border: 1px solid #ddd; padding: 10px; text-align: left; }
                         .tabla th { background-color: #f5f5f5; font-weight: bold; }
                         .fecha { width: 120px; }
+                        .observaciones { background-color: #f8f9fa; padding: 8px; border-radius: 4px; margin-top: 5px; font-size: 0.9em; }
                         @media print {
                             body { margin: 0; }
                             .no-print { display: none; }
@@ -613,6 +711,7 @@
                             <tr>
                                 <th class="fecha">Fecha</th>
                                 <th>Recurso</th>
+                                <th>Observaciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -623,6 +722,7 @@
                                     <tr>
                                         <td class="fecha">${fechaFormateada}</td>
                                         <td>${item.recurso}</td>
+                                        <td>${item.observaciones || 'Sin observaciones'}</td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -813,6 +913,8 @@
                             showMessage('No se pudieron cargar los datos de ninguna hoja', 'buscador-error');
                         } else {
                             console.log(`Datos cargados: ${sheetData.length} registros de ${SHEET_URLS.length} hojas`);
+                            // Calcular y mostrar estadísticas
+                            calcularEstadisticas(sheetData);
                         }
                     })
                     .catch(error => {
@@ -850,13 +952,14 @@
                             return acc;
                         }, {result: [], inQuote: false, temp: ''}).result;
                         
-                        if (fields.length >= 8) { // Ahora necesitamos 8 columnas
+                        if (fields.length >= 9) { // Ahora necesitamos 9 columnas (incluyendo observaciones)
                             result.push({
-                                fecha: fields[2] || '',      // Columna C
-                                nombre: fields[3] || '',     // Columna D
-                                dni: fields[4] || '',        // Columna E
-                                localidad: fields[6] || '',  // Columna G
-                                recurso: fields[7] || ''     // Columna H
+                                fecha: fields[2] || '',          // Columna C
+                                nombre: fields[3] || '',         // Columna D
+                                dni: fields[4] || '',            // Columna E
+                                localidad: fields[6] || '',      // Columna G
+                                recurso: fields[7] || '',        // Columna H
+                                observaciones: fields[8] || ''   // Columna I
                             });
                         }
                     }
@@ -948,8 +1051,17 @@
                         
                         html += `
                             <div class="detail-item">
-                                <span class="detail-date">${formattedDate}</span>
-                                <span class="detail-resource">${item.recurso}</span>
+                                <div class="detail-main">
+                                    <span class="detail-date">${formattedDate}</span>
+                                    <div class="detail-content">
+                                        <div class="detail-resource">${item.recurso}</div>
+                                        ${item.observaciones ? `
+                                            <div class="detail-observaciones">
+                                                <strong>Observaciones:</strong> ${item.observaciones}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
                             </div>
                         `;
                     });
@@ -994,6 +1106,3 @@
     </script>
 </body>
 </html>
-
-
-
